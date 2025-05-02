@@ -22,7 +22,17 @@ import {
   Stack,
   Snackbar,
   Card,
-  CardContent
+  CardContent,
+  Tabs,
+  Tab,
+  useTheme,
+  useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
@@ -30,19 +40,46 @@ import PersonIcon from '@mui/icons-material/Person';
 import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LockIcon from '@mui/icons-material/Lock';
+import SecurityIcon from '@mui/icons-material/Security';
 import { 
   getRegisteredVoters, 
   deleteVoter, 
   deleteVote, 
   resetAllVotes, 
-  resetSystem 
+  resetSystem,
+  getResults
 } from '../services/api';
 
 // Admin credentials
 const ADMIN_ID = "adi23";
 const ADMIN_PASSWORD = "23";
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+const TabPanel = (props: TabPanelProps) => {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`admin-tabpanel-${index}`}
+      aria-labelledby={`admin-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+    </div>
+  );
+};
+
 const Admin: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [voters, setVoters] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,31 +93,46 @@ const Admin: React.FC = () => {
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userId, setUserId] = useState('');
+  const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [votesData, setVotesData] = useState<{name: string; votes: number}[]>([]);
+  
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    action: () => Promise<void>;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    action: async () => {},
+  });
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchVoters();
+      fetchData();
     }
   }, [isAuthenticated]);
 
   const handleLogin = () => {
     setLoginError(null);
     
-    if (userId === ADMIN_ID && password === ADMIN_PASSWORD) {
+    if (adminId === ADMIN_ID && password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       // Store in session storage to maintain login until page refresh
       sessionStorage.setItem('adminAuthenticated', 'true');
+      fetchData();
     } else {
       setLoginError('Invalid ID or password');
     }
   };
 
   // Separate handlers for each field
-  const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserId(e.target.value);
+  const handleAdminIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAdminId(e.target.value);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,17 +155,21 @@ const Admin: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     sessionStorage.removeItem('adminAuthenticated');
-    setUserId('');
+    setAdminId('');
     setPassword('');
   };
 
-  const fetchVoters = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await getRegisteredVoters();
-      setVoters(data);
+      // Fetch voters and votes data
+      const voters = await getRegisteredVoters();
+      const results = await getResults();
+      
+      setVoters(voters);
+      setVotesData(results);
     } catch (err: any) {
-      setError('Failed to fetch voters. ' + (err.response?.data?.detail || ''));
+      setError('Failed to fetch data. ' + (err.response?.data?.detail || ''));
     } finally {
       setLoading(false);
     }
@@ -140,7 +196,7 @@ const Admin: React.FC = () => {
       if (action === 'delete-voter' && selectedVoter) {
         const response = await deleteVoter(selectedVoter);
         setSuccess(`Voter ${selectedVoter} has been deleted successfully.`);
-        fetchVoters(); // Refresh the list
+        fetchData(); // Refresh the list
       } else if (action === 'delete-vote' && selectedVoter) {
         const response = await deleteVote(selectedVoter);
         setSuccess(`Vote for ${selectedVoter} has been deleted.`);
@@ -177,7 +233,7 @@ const Admin: React.FC = () => {
     try {
       const response = await resetSystem();
       setSuccess('The entire system has been reset successfully.');
-      fetchVoters(); // Refresh the now-empty list
+      fetchData(); // Refresh the now-empty list
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to reset system. Please try again.');
     } finally {
@@ -197,6 +253,10 @@ const Admin: React.FC = () => {
     if (value === '' || /^\d+$/.test(value)) {
       setSearchQuery(value);
     }
+  };
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
   };
 
   // Login form component
@@ -227,8 +287,8 @@ const Admin: React.FC = () => {
             name="admin-id"
             label="Admin ID"
             variant="outlined"
-            value={userId}
-            onChange={handleUserIdChange}
+            value={adminId}
+            onChange={handleAdminIdChange}
             margin="normal"
             inputProps={{
               autoComplete: "username",
@@ -276,7 +336,204 @@ const Admin: React.FC = () => {
   // Admin panel - only shown when authenticated
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, mt: 4 }}>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
+          Admin Dashboard
+        </Typography>
+
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            variant={isMobile ? "fullWidth" : "standard"}
+            centered={!isMobile}
+          >
+            <Tab label="Voters Management" />
+            <Tab label="System Control" />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+            <Typography variant="h6">Registered Voters</Typography>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchData}
+              disabled={loading}
+              size={isMobile ? "small" : "medium"}
+            >
+              Refresh
+            </Button>
+          </Box>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ my: 2 }}>
+              {error}
+            </Alert>
+          ) : (
+            <>
+              {isMobile ? (
+                // Mobile view - list instead of table
+                <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+                  {voters.length > 0 ? (
+                    voters.map((voter, index) => (
+                      <React.Fragment key={voter}>
+                        <ListItem
+                          secondaryAction={
+                            <IconButton edge="end" onClick={() => handleDeleteVoter(voter)}>
+                              <DeleteIcon />
+                            </IconButton>
+                          }
+                        >
+                          <ListItemText 
+                            primary={`Aadhar: ${voter}`} 
+                          />
+                        </ListItem>
+                        {index < voters.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <ListItem>
+                      <ListItemText primary="No registered voters found" />
+                    </ListItem>
+                  )}
+                </List>
+              ) : (
+                // Desktop view - table
+                <TableContainer component={Paper} variant="outlined">
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Sr. No.</TableCell>
+                        <TableCell>Aadhar Number</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {voters.length > 0 ? (
+                        voters.map((voter, index) => (
+                          <TableRow key={voter}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell>{voter}</TableCell>
+                            <TableCell align="right">
+                              <Button
+                                variant="outlined"
+                                color="error"
+                                size="small"
+                                startIcon={<DeleteIcon />}
+                                onClick={() => handleDeleteVoter(voter)}
+                              >
+                                Delete Voter
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} align="center">
+                            No registered voters found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </>
+          )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Typography variant="h6" gutterBottom>
+            System Controls
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 3,
+            mt: 3
+          }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" color="error" gutterBottom>
+                  Delete Vote
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Remove a vote from a specific Aadhar number
+                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' }, 
+                  gap: 2, 
+                  alignItems: { xs: 'stretch', sm: 'center' }
+                }}>
+                  <TextField
+                    label="Aadhar Number"
+                    variant="outlined"
+                    placeholder="Enter Aadhar Number"
+                    size="small"
+                    fullWidth
+                    sx={{ flexGrow: 1 }}
+                    id="delete-vote-aadhar"
+                  />
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={() => {
+                      const aadhar = (document.getElementById('delete-vote-aadhar') as HTMLInputElement)?.value;
+                      if (aadhar) handleDeleteVote(aadhar);
+                    }}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    Delete Vote
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" color="error" gutterBottom>
+                  Reset All Votes
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  This will clear all votes, but keep voters registered
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleResetVotes}
+                >
+                  Reset All Votes
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" color="error" gutterBottom>
+                  Reset Entire System
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  WARNING: This will delete ALL voters and votes!
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleSystemReset}
+                >
+                  Reset System
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
+        </TabPanel>
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" gutterBottom>
             Admin Panel
@@ -299,7 +556,7 @@ const Admin: React.FC = () => {
             variant="contained" 
             color="primary" 
             startIcon={<RefreshIcon />}
-            onClick={fetchVoters}
+            onClick={fetchData}
             disabled={loading}
           >
             Refresh List

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,6 +15,8 @@ import {
   CardActionArea,
   Stack,
   Divider,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
@@ -30,6 +32,10 @@ const PARTIES = [
 ];
 
 const Vote: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
   const [step, setStep] = useState<'verify' | 'vote'>('verify');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,12 +46,22 @@ const Vote: React.FC = () => {
   const [selectedParty, setSelectedParty] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
 
-  const handleCapture = () => {
+  // Calculate responsive webcam dimensions
+  const webcamWidth = isMobile ? 300 : isTablet ? 400 : 500;
+  const webcamHeight = (webcamWidth * 3) / 4; // 4:3 aspect ratio
+  
+  const videoConstraints = {
+    width: webcamWidth,
+    height: webcamHeight,
+    facingMode: 'user',
+  };
+
+  const handleCapture = useCallback(() => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       setCapturedImage(imageSrc);
     }
-  };
+  }, [webcamRef]);
 
   const retakePhoto = () => {
     setCapturedImage(null);
@@ -124,8 +140,8 @@ const Vote: React.FC = () => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-        <Typography variant="h4" gutterBottom align="center">
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, mt: 4 }}>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           {step === 'verify' ? 'Voter Verification' : 'Cast Your Vote'}
         </Typography>
 
@@ -145,7 +161,7 @@ const Vote: React.FC = () => {
                   border: '1px solid #d32f2f',
                   '& .MuiAlert-icon': {
                     color: '#d32f2f',
-                    fontSize: '1.5rem'
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
                   }
                 }}
               >
@@ -164,18 +180,28 @@ const Vote: React.FC = () => {
 
             <Box sx={{ mt: 3 }}>
               {!capturedImage ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card sx={{ width: '100%', maxWidth: 500, mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  width: '100%' 
+                }}>
+                  <Card sx={{ 
+                    width: '100%', 
+                    maxWidth: { xs: 300, sm: 400, md: 500 }, 
+                    mb: 2,
+                    mx: 'auto'
+                  }}>
                     <Webcam
                       audio={false}
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
-                      videoConstraints={{
-                        width: 500,
-                        height: 375,
-                        facingMode: 'user',
+                      videoConstraints={videoConstraints}
+                      style={{ 
+                        width: '100%', 
+                        height: 'auto', 
+                        objectFit: 'cover',
                       }}
-                      style={{ width: '100%', height: 'auto' }}
                     />
                   </Card>
                   <Button
@@ -184,14 +210,28 @@ const Vote: React.FC = () => {
                     startIcon={<CameraAltIcon />}
                     onClick={handleCapture}
                     fullWidth
-                    sx={{ maxWidth: 500 }}
+                    sx={{ 
+                      maxWidth: { xs: 300, sm: 400, md: 500 },
+                      py: { xs: 1, sm: 1.5 },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
                   >
                     Capture Photo
                   </Button>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card sx={{ width: '100%', maxWidth: 500, mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  width: '100%' 
+                }}>
+                  <Card sx={{ 
+                    width: '100%', 
+                    maxWidth: { xs: 300, sm: 400, md: 500 }, 
+                    mb: 2,
+                    mx: 'auto'
+                  }}>
                     <CardMedia
                       component="img"
                       image={capturedImage}
@@ -199,12 +239,20 @@ const Vote: React.FC = () => {
                       sx={{ width: '100%', height: 'auto' }}
                     />
                   </Card>
-                  <Stack direction="row" spacing={2} sx={{ maxWidth: 500, width: '100%' }}>
+                  <Stack 
+                    direction={{ xs: 'column', sm: 'row' }} 
+                    spacing={2} 
+                    sx={{ 
+                      maxWidth: { xs: 300, sm: 400, md: 500 }, 
+                      width: '100%' 
+                    }}
+                  >
                     <Button
                       variant="outlined"
                       color="primary"
                       onClick={retakePhoto}
                       fullWidth
+                      sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                     >
                       Retake Photo
                     </Button>
@@ -215,6 +263,7 @@ const Vote: React.FC = () => {
                       fullWidth
                       disabled={loading}
                       startIcon={loading ? <CircularProgress size={20} /> : null}
+                      sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                     >
                       Verify Identity
                     </Button>
@@ -232,48 +281,64 @@ const Vote: React.FC = () => {
             <Divider sx={{ my: 3 }} />
 
             <Box sx={{ mt: 3 }}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: { xs: 2, sm: 3 },
+                justifyContent: 'center'
+              }}>
                 {PARTIES.map((party) => (
-                  <Box sx={{ width: { xs: '100%', sm: '47%', md: '47%' }, mb: 2 }} key={party.id}>
+                  <Box 
+                    sx={{ 
+                      width: { 
+                        xs: '100%', 
+                        sm: 'calc(50% - 16px)', 
+                        md: 'calc(50% - 24px)' 
+                      }, 
+                      mb: 2 
+                    }} 
+                    key={party.id}
+                  >
                     <Card 
                       elevation={selectedParty === party.id ? 6 : 1}
                       sx={{ 
                         border: selectedParty === party.id ? `2px solid ${party.color}` : 'none',
                         transition: 'all 0.3s ease',
+                        height: '100%',
                       }}
                     >
                       <CardActionArea 
                         onClick={() => !loading && handleVote(party.id)}
                         disabled={loading}
-                        sx={{ p: 2 }}
+                        sx={{ p: { xs: 1.5, sm: 2 }, height: '100%' }}
                       >
                         <CardContent>
+                          <Typography 
+                            variant="h5" 
+                            component="div" 
+                            gutterBottom 
+                            align="center"
+                            sx={{ 
+                              color: party.color,
+                              fontWeight: 'bold',
+                              fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                            }}
+                          >
+                            {party.name}
+                          </Typography>
                           <Box 
                             sx={{ 
                               display: 'flex', 
-                              alignItems: 'center', 
                               justifyContent: 'center',
-                              flexDirection: 'column',
-                              minHeight: 120,
+                              mt: 1
                             }}
                           >
-                            <Box 
+                            <HowToVoteIcon 
                               sx={{ 
-                                width: 80, 
-                                height: 80, 
-                                borderRadius: '50%', 
-                                bgcolor: party.color,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mb: 2,
-                              }}
-                            >
-                              <HowToVoteIcon sx={{ color: 'white', fontSize: 40 }} />
-                            </Box>
-                            <Typography variant="h5" component="div" align="center">
-                              {party.name}
-                            </Typography>
+                                fontSize: { xs: 40, sm: 60 }, 
+                                color: party.color 
+                              }} 
+                            />
                           </Box>
                         </CardContent>
                       </CardActionArea>
@@ -281,27 +346,10 @@ const Vote: React.FC = () => {
                   </Box>
                 ))}
               </Box>
-
-              {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                  <CircularProgress size={40} />
-                </Box>
-              )}
             </Box>
           </>
         )}
-
-        <Snackbar
-          open={!!error}
-          autoHideDuration={6000}
-          onClose={() => setError(null)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-        </Snackbar>
-
+        
         <Snackbar
           open={!!success}
           autoHideDuration={6000}

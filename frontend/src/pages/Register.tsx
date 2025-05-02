@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -12,12 +12,18 @@ import {
   Snackbar,
   Card,
   CardMedia,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import Webcam from 'react-webcam';
 import { registerVoter } from '../services/api';
 
 const Register: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
   const [aadharNumber, setAadharNumber] = useState('');
   const [aadharError, setAadharError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -25,6 +31,16 @@ const Register: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
+
+  // Calculate responsive webcam dimensions
+  const webcamWidth = isMobile ? 300 : isTablet ? 400 : 500;
+  const webcamHeight = (webcamWidth * 3) / 4; // 4:3 aspect ratio
+  
+  const videoConstraints = {
+    width: webcamWidth,
+    height: webcamHeight,
+    facingMode: 'user',
+  };
 
   const handleAadharChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -45,12 +61,12 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleCapture = () => {
+  const handleCapture = useCallback(() => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       setCapturedImage(imageSrc);
     }
-  };
+  }, [webcamRef]);
 
   const handleRegister = async () => {
     if (!aadharNumber) {
@@ -95,8 +111,8 @@ const Register: React.FC = () => {
 
   return (
     <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-        <Typography variant="h4" gutterBottom align="center">
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, mt: 4 }}>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           Voter Registration
         </Typography>
         <Typography variant="body1" paragraph align="center" color="text.secondary">
@@ -130,18 +146,28 @@ const Register: React.FC = () => {
                 Face Capture
               </Typography>
               {!capturedImage ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card sx={{ width: '100%', maxWidth: 500, mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  width: '100%' 
+                }}>
+                  <Card sx={{ 
+                    width: '100%', 
+                    maxWidth: { xs: 300, sm: 400, md: 500 }, 
+                    mb: 2,
+                    mx: 'auto'
+                  }}>
                     <Webcam
                       audio={false}
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
-                      videoConstraints={{
-                        width: 500,
-                        height: 375,
-                        facingMode: 'user',
+                      videoConstraints={videoConstraints}
+                      style={{ 
+                        width: '100%', 
+                        height: 'auto', 
+                        objectFit: 'cover',
                       }}
-                      style={{ width: '100%', height: 'auto' }}
                     />
                   </Card>
                   <Button
@@ -150,14 +176,28 @@ const Register: React.FC = () => {
                     startIcon={<CameraAltIcon />}
                     onClick={handleCapture}
                     fullWidth
-                    sx={{ maxWidth: 500 }}
+                    sx={{ 
+                      maxWidth: { xs: 300, sm: 400, md: 500 },
+                      py: { xs: 1, sm: 1.5 },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
                   >
                     Capture Photo
                   </Button>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card sx={{ width: '100%', maxWidth: 500, mb: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  width: '100%' 
+                }}>
+                  <Card sx={{ 
+                    width: '100%', 
+                    maxWidth: { xs: 300, sm: 400, md: 500 }, 
+                    mb: 2,
+                    mx: 'auto'
+                  }}>
                     <CardMedia
                       component="img"
                       image={capturedImage}
@@ -170,7 +210,11 @@ const Register: React.FC = () => {
                     color="primary"
                     onClick={retakePhoto}
                     fullWidth
-                    sx={{ maxWidth: 500 }}
+                    sx={{ 
+                      maxWidth: { xs: 300, sm: 400, md: 500 },
+                      py: { xs: 1, sm: 1.5 },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
                   >
                     Retake Photo
                   </Button>
@@ -186,7 +230,11 @@ const Register: React.FC = () => {
                 size="large"
                 onClick={handleRegister}
                 disabled={loading || !aadharNumber || aadharNumber.length !== 12 || !capturedImage}
-                sx={{ mt: 2, py: 1.5 }}
+                sx={{ 
+                  mt: 2, 
+                  py: { xs: 1.2, sm: 1.5 },
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}
               >
                 {loading ? <CircularProgress size={24} /> : 'Register'}
               </Button>
