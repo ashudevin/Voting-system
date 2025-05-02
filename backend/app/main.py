@@ -17,6 +17,10 @@ import uuid
 from sklearn.neighbors import KNeighborsClassifier
 from pymongo import MongoClient
 from bson.binary import Binary
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configuration variables
 # Adjust these values to fine-tune the face recognition system
@@ -40,10 +44,11 @@ app.add_middleware(
 os.makedirs("data", exist_ok=True)
 os.makedirs("temp", exist_ok=True)
 
-# MongoDB Connection
-MONGO_URI = "mongodb://localhost:27017/"
+# MongoDB Connection from environment variables
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "smart_election_system")
 client = MongoClient(MONGO_URI)
-db = client["smart_election_system"]
+db = client[MONGO_DB_NAME]
 voters_collection = db["voters"]
 votes_collection = db["votes"]
 faces_collection = db["faces"]
