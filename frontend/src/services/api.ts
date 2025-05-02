@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://voting-system-5urb.onrender.com';
+const API_URL = 'https://voting-system-5urb.onrender.com'; // backend live
 
 const api = axios.create({
   baseURL: API_URL,
